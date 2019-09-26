@@ -1,0 +1,40 @@
+import ETS3.*
+
+p1 = [0, 0, 41];  % ground to first axis
+p2 = [0, 56, 0];    
+p3 = [0, 0, 60];
+p4 = [0, -15, 100];
+
+E = Tz(p1(3)) * Ry('q1') * Ty(p2(2)) * Rx('q2') * Tz(p3(3)) ...
+    * Rx('q3') * Tz(p4(3)) * Ty(p4(2));
+
+syms q1 q2 q3 real
+
+TE = E.fkine([q1, q2, q3]);
+
+% Power of Exponentials Method
+theta1 = 2;
+theta2 = 0;
+theta3 = 2;
+
+Tsb = [1, 0, 0, 0;0, 1, 0, 41; 0, 0, 1, 201;0, 0, 0, 1];
+
+w1 = [0, 1, 0]';
+p1 = [0, 0, 41]';
+eX1 = expogen4000(p1, w1, theta1);
+
+w2 = [1, 0, 0]';
+p2 = [0, 56, 41]';
+eX2 = expogen4000(p2, w2, theta2);
+
+w3 = [1, 0, 0]';
+p3 = [0, 56, 101]';
+eX3 = expogen4000(p3, w3, theta3);
+
+T = eX1*eX2*eX3*Tsb;
+
+Tas1 = [Rgamma(0), [0; 100; 0];[0, 0, 0], 1];
+Tab1 = Tas1*Tsb1;
+
+
+
