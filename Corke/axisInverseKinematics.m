@@ -1,45 +1,44 @@
 import ETS3.*
 
-p1 = [0, 0, 41];  % ground to first axis
-p2 = [0, 56, 0];    
+% Axis of rotation and claw tip -> Starting ground to first axis
+p1 = [0, 0, 41];
+p2 = [0, 56, 0];
 p3 = [0, 0, 60];
 p4 = [0, -15, 100];
 
+% Solve forward kinematics using Corke toolbox. E.teach to run GUI
 E = Tz(p1(3)) * Ry('q1') * Ty(p2(2)) * Rx('q2') * Tz(p3(3)) ...
     * Rx('q3') * Tz(p4(3)) * Ty(p4(2));
 
 syms q1 q2 q3 real
-
 TE = E.fkine([q1, q2, q3]);
 
 % Power of Exponentials Method
-theta1 = [0, 0, 0];
-Tsb1 = Tsbgen5000(theta1);
-Tas1 = [Rgamma(0), [0; 100; 0];[0, 0, 0], 1];
-Tab1 = Tas1*Tsb1;
+%    Tsbgen5000([servoAngle1, servoAngle2, servoAngle3]) -> Claw tip pose in claw frame
+%    Rgamma(gamma) -> Calculates yaw rotation matrix
+%    Tsb -> Claw tip pose in claw frame
+%    Tab -> Center of disk to claw
+%    Tab -> Center of disk to end of claw pose
 
-theta2 = [0, 0, 0];
-Tsb2 = Tsbgen5000(theta2);
-Tas2 = [Rgamma(72/180*pi), [-100*sin(72/180*pi); 100*cos(72/180*pi); 0];[0, 0, 0], 1];
-Tab2 = Tas2*Tsb2;
+for ii = 0:4
+  Tsb = Tsbgen5000([0, 0, 0]);
+  Tas = [Rgamma((72*ii)/180*pi), [-100*sind(72*ii); 100*cosd(72*ii); 0]; [0, 0, 0], 1];
+  Tab{ii+1} = Tas*Tsb;
+end
 
-theta5 = [0, 0, 0];
-Tsb5 = Tsbgen5000(theta5);
-Tas5 = [Rgamma(72*4/180*pi), [-100*sin(72*4/180*pi); 100*cos(72*4/180*pi); 0];[0, 0, 0], 1];
-Tab5 = Tas5*Tsb5;
-% 
+
 % % Symbolic Inverse Kinematics
 % syms t1 t2 t3 real
 % theta1 = [t1, t2, t3];
 % Tsb1 = Tsbgen5000(theta1);
 % Tas1 = [Rgamma(0), [0; 100; 0];[0, 0, 0], 1];
 % Tab1 = Tas1*Tsb1;
-% 
+%
 % syms x y z real
 % e1 = x == Tab1(1, 4);
 % e2 = y == Tab1(2, 4);
 % e3 = z == Tab1(3, 4);
-% 
+%
 % S = solve([e1, e2, e3], [t1, t2, t3]);
 
 % Numerical Inverse Kinematics
@@ -67,5 +66,3 @@ options = optimoptions('fmincon', 'ObjectiveLimit', 0.001);
 tic;
 [theta, error] = fmincon(err, theta0, [],[],[],[],[-pi,-pi,-pi], [pi,pi,pi],[], options)
 toc
-
-
