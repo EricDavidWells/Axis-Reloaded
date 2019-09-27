@@ -43,15 +43,29 @@ Tab5 = Tas5*Tsb5;
 % S = solve([e1, e2, e3], [t1, t2, t3]);
 
 % Numerical Inverse Kinematics
-theta0 = [1, 1, 1];
-pdes = [0; 100; 100];
-fkin = @(theta)(AxisReloadedPoseCalc(0, theta));
-fpos = @(T)T(1:3, 4);
 
-err = @(theta) norm(fpos(fkin(theta)) - pdes);
-options = optimset('TolFun', 0.1);
+theta0 = [0, 0, 0]; % initial guess
+pdes = [90; 100; 150];   % desired end effector position
+fkin = @(theta)(AxisReloadedPoseCalc(0, theta));    % function to compute pose of finger 0
+fpos = @(T)T(1:3, 4);   % function to extract position from pose
+err = @(theta) norm(fpos(fkin(theta)) - pdes);  % error between guess and desired
+
+% fminsearch method
+options = optimset('TolFun', 0.001);
 tic;
-theta = fminsearch(err, theta0, options);
+[theta, error] = fminsearch(err, theta0, options)
+toc
+
+% unconstrained fminunc method
+options = optimoptions('fminunc', 'ObjectiveLimit', 0.001);
+tic;
+[theta, error] = fminunc(err, theta0, options)
+toc
+
+% constrained fmincon method
+options = optimoptions('fmincon', 'ObjectiveLimit', 0.001);
+tic;
+[theta, error] = fmincon(err, theta0, [],[],[],[],[-pi,-pi,-pi], [pi,pi,pi],[], options)
 toc
 
 
