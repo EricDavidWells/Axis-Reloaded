@@ -1,4 +1,5 @@
 import ETS3.*
+clear all
 
 % Axis of rotation and claw tip -> Starting ground to first axis
 p1 = [0, 0, 41];
@@ -25,18 +26,18 @@ for ii = 0:4
   Tab{ii+1} = Tas*Tsb;
 end
 
-% % Power of Exponentials Method (forward kinematics)-> Symbolic
-% syms j1 j2 j3 real
-% Tsb = Tsbgen5000([j1, j2, j3]);
-% Tas = [Rgamma(0), [-100*sind(0); 100*cosd(0); 0]; [0, 0, 0], 1];
-% Tab = simplify(Tas*Tsb);
-%
-% % Symbolic inverse kinematics
+% Power of Exponentials Method (forward kinematics)-> Symbolic
+syms j1 j2 j3 real
+Tsb = Tsbgen5000([j1, j2, j3]);
+Tas = [Rgamma(0), [-100*sind(0); 100*cosd(0); 0]; [0, 0, 0], 1];
+Tab = simplify(Tas*Tsb);
+
+% Symbolic inverse kinematics
 % syms x y z real
 % e1 = x == Tab(1, 4);
 % e2 = y == Tab(2, 4);
 % e3 = z == Tab(3, 4);
-%
+
 % S = solve([e1 e2 e3], [j1 j2 j3])
 
 % Numerical Inverse Kinematics

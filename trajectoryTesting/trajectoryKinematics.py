@@ -48,6 +48,9 @@ class trajectoryKinematics():
         self.jointDesired2 = j2
         self.jointDesired3 = j3
 
+    def err(self, J):
+
+
     def trajectory(self, plotFlag):
         th = np.linspace((2*np.pi/5)*self.claw, (2*np.pi/5)*(self.claw+1), self.points)
         idx = np.linspace(-self.points/2, self.points/2, self.points)
@@ -67,7 +70,7 @@ class trajectoryKinematics():
 def main():
     claw0 = trajectoryKinematics(0, 230, 200, 30)
 
-    claw0.trajectory(False)
+    claw0.trajectory(True)
 
     start = timer()
     claw0.inverseKinematics()
