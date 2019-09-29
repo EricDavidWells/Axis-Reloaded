@@ -11,6 +11,7 @@
 ### Import required liraries
 import re
 import serial
+import time
 from math import sqrt, atan, acos, fabs
 
 ### Import constants
