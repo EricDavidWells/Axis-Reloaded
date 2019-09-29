@@ -6,29 +6,34 @@ from timeit import default_timer as timer
 from scipy.optimize import fsolve
 from scipy.optimize import root
 from scipy.optimize import minimize
-from math import cos, sin
+from math import cos, sin, pi
+import serial
+import lss
+import lss_const as lssc
+import time
 
 
 class Finger():
-    def __init__(self, J0):
+    def __init__(self, servoarray):
         """
 
         :param J0: initial theta vector of finger
         """
-
-        self.J = np.array(J0)
+        self.servos = servoarray
+        self.J = np.array([0, 0, 0])
 
         # All kinematic constants defined
         self.Tsb0 = np.array([[1,0,0,0],
                              [0,1,0,41],
                              [0,0,1,201],
                              [0,0,0,1]])
-        self.w1 = np.array([0, 1, 0]).reshape(3,1)
+        self.w1 = np.array([0, -1, 0]).reshape(3,1)
         self.p1 = np.array([0, 0, 41]).reshape(3,1)
-        self.w2 = np.array([1, 0, 0]).reshape(3,1)
+        self.w2 = np.array([-1, 0, 0]).reshape(3,1)
         self.p2 = np.array([0, 56, 41]).reshape(3,1)
         self.w3 = np.array([1, 0, 0]).reshape(3,1)
         self.p3 = np.array([0, 56, 101]).reshape(3,1)
+        self.Jlim = np.array([[-90, 90], [-30, 110], [-80, 120]])
 
     def fkine(self, theta):
         """
@@ -59,23 +64,52 @@ class Finger():
 
     def eXgen(self, p, w, theta):
         z = np.cross(-w.reshape(1,3), p.reshape(1,3)).reshape(3,1)
+        sw = skew(w)
         eS = np.eye(3) + skew(w)*sin(theta) + skew(w)@skew(w)*(1-cos(theta))
         G = np.eye(3) * theta + skew(w) * (1 - cos(theta)) + skew(w)@skew(w) * (theta - sin(theta))
         temp = np.hstack((eS, G@z))
         eX = np.vstack((temp, [0, 0, 0, 1]))
         return eX
 
+    def move(self, J):
+        Jdeg = J*180/pi
+        for i in range(0, len(self.servos)):
+            Jdeg[i] = np.clip(Jdeg[i], self.Jlim[i, 0], self.Jlim[i, 1])
+            value = int(Jdeg[i]*10)
+            self.servos[i].move(value)
+
+    def reset(self):
+        for i in range(0, len(self.servos)):
+            self.servos[i].reset()
+        time.sleep(3)
 
 def skew(v):
-        a, b, c = v
+        a, b, c = v[0,0], v[1,0], v[2,0]
         s = np.array([[0,-c,b],[c,0,-a],[-b,a,0]])
         return s
 
 
 def main():
-    finger = Finger([0, 0, 0])
-    pos = finger.fkine([1, 0, 0])
+    comport = 'COM6'
+    servoID1 = 21
+    servoID2 = 22
+    servoID3 = 23
+    baudrate = lssc.LSS_DefaultBaud
+    lss.initBus(comport, baudrate)
+    myLSS1 = lss.LSS(servoID1)
+    myLSS2 = lss.LSS(servoID2)
+    myLSS3 = lss.LSS(servoID3)
+
+
+    finger = Finger([myLSS1, myLSS2, myLSS3])
+    # finger.reset()
+    finger.J = np.array([0, 0, 0])
+    finger.move(finger.J)
+
+    # finger.servos[0].move(0)
+    pos = [100, -25, 0]
     iJ, err = finger.ikine(pos)
+    finger.move(iJ)
     print(iJ, err)
 
 if __name__ == '__main__':

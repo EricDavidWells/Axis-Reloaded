@@ -20,14 +20,14 @@ myLSS3 = lss.LSS(servoID3)
 # myLSS3.setColorLED(3, lssc.LSS_SetConfig)
 
 # myLSS.setOriginOffset(-900, lssc.LSS_SetConfig)
+
+
+
 myLSS1.reset()
 myLSS2.reset()
 myLSS3.reset()
-# myLSS.setOriginOffset(-900)
+
 time.sleep(5)
-myLSS1.move(0)
-myLSS2.move(0)
-myLSS3.move(0)
 
 while True:
     # start = time.time()
