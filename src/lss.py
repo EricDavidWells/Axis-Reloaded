@@ -49,6 +49,9 @@ def genericRead_Blocking_int(id, cmd):
 			if(c.decode("utf-8") == ""):
 				break
 		# Get packet
+			# data = [LSS.bus.read(1,timeout=None)]
+			# while lssc.LSS_CommandEnd not in data:
+			# 	data.append(LSS.bus.read(1))
 		data = LSS.bus.read_until(lssc.LSS_CommandEnd)
 		# Parse packet
 		matches = re.match("(\d{1,3})([A-Z]{1,4})(-?\d{1,18})", data.decode("utf-8"), re.I)

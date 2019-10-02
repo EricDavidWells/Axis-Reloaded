@@ -67,6 +67,20 @@ class Finger():
         temp = np.hstack((eS, G@z))
         eX = np.vstack((temp, [0, 0, 0, 1]))
         return eX
+    def readyToMove(self):
+        ready = True
+        # for i in range(0, len(self.servos)):
+            #
+            # stat = self.servos[i].getPosition()
+            # while stat is None:
+            #     stat= self.servos[i].getPosition()
+        #         time.sleep(0.0001)
+        #
+
+            # if ("6" not in stat) and ("5" not in stat):
+            #     ready = False
+            #     break
+        return ready
 
     def move(self, J):
         Jdeg = J*180/pi
@@ -75,10 +89,18 @@ class Finger():
             value = int(Jdeg[i]*10)
             self.servos[i].move(value)
 
+
     def reset(self):
         for i in range(0, len(self.servos)):
             self.servos[i].reset()
         time.sleep(3)
+        for i in range(0, len(self.servos)):
+            self.servos[i].setMaxSpeed(30)
+            # self.servos[i].setAngularAcceleration(10)
+            # self.servos[i].setAngularDeceleration(10)
+            # self.servos[i].setAngularStiffness(6)
+            # self.servos[i].setAngularHoldingStiffness(4)
+            self.servos[i].setMotionControlEnabled(0)
 
 
 def circleTrajectoryGen(radius, height, center, points):
@@ -247,15 +269,19 @@ def main():
     print(iJ, err, pos)
 
     # generate circle trajectory
-    points = 5000
-    traj = circleTrajectoryGen(50, 150, [0, 10], points)
+    points = 3600
+    traj = circleTrajectoryGen(50, 175, [0, 30], points)
     itraj = inverseTracjectoryGen(traj, finger.ikine)
 
     # Loop through trajectory
     while True:
         for i in range(0, points):
             # start = time.time()
-            finger.move(itraj[:, i])
+            if finger.readyToMove():
+                finger.move(itraj[:, i])
+            else:
+                i -= 1
+            time.sleep(0.005)
             # print(time.time()-start)
             # print(finger.servos[1].getCurrent())
 
