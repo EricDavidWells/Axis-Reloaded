@@ -16,7 +16,7 @@ import lss_const as lssc
 
 # Constants
 #CST_LSS_Port = "/dev/ttyUSB0"		# For Linux/Unix platforms
-CST_LSS_Port = "COM4"				# For windows platforms
+CST_LSS_Port = "COM3"				# For windows platforms
 CST_LSS_Baud = lssc.LSS_DefaultBaud
 
 # Create and open a serial port
