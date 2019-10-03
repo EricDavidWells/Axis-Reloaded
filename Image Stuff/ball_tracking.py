@@ -31,7 +31,7 @@ pts = deque(maxlen=args["buffer"])
 # if a video path was not supplied, grab the reference
 # to the webcam
 if not args.get("video", False):
-	vs = VideoStream(src=1).start()
+	vs = VideoStream(src=0).start()
 
 # otherwise, grab a reference to the video file
 else:

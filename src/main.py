@@ -325,6 +325,7 @@ def main():
                Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)]),
                Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)]),
                Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)])]
+
     fangles = [0, 72/180*pi, 72*2/180*pi, 72*3/180*pi, 72*4/180*pi]
     radius = 100
     hand = Hand(fingers, fangles, radius)
