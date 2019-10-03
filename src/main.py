@@ -248,9 +248,9 @@ def skew(v):
 def main():
     # initialize servos
     comport = 'COM6'
-    servoID1 = 21
-    servoID2 = 22
-    servoID3 = 23
+    servoID1 = 11
+    servoID2 = 12
+    servoID3 = 13
     baudrate = lssc.LSS_DefaultBaud
     lss.initBus(comport, baudrate)
     myLSS1 = lss.LSS(servoID1)
@@ -259,31 +259,43 @@ def main():
 
     # Create finger object
     finger = Finger([myLSS1, myLSS2, myLSS3])
-    finger.reset()
+    # fingers[0].reset()
 
+    fingers = [Finger([lss.LSS(11),lss.LSS(12),lss.LSS(13)]),
+               Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)]),
+               Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)]),
+               Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)]),
+               Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)])]
+    for fi in fingers:
+        fi.reset()
+    # fingers[0].reset()
     # Move to desired starting position
     pos = [0, 10, 150]
-    iJ, err = finger.ikine(pos, finger.J)
-    finger.move(iJ)
-    pos = finger.fkine(iJ)
+
+    iJ, err = fingers[0].ikine(pos, fingers[0].J)
+    for fi in fingers:
+        fi.move(iJ)
+    pos = fingers[0].fkine(iJ)
     print(iJ, err, pos)
 
     # generate circle trajectory
-    points = 3600
+    points = 1000
     traj = circleTrajectoryGen(50, 175, [0, 30], points)
-    itraj = inverseTracjectoryGen(traj, finger.ikine)
+    itraj = inverseTracjectoryGen(traj, fingers[0].ikine)
 
     # Loop through trajectory
     while True:
         for i in range(0, points):
             # start = time.time()
-            if finger.readyToMove():
-                finger.move(itraj[:, i])
-            else:
-                i -= 1
+            for fi in fingers:
+                fi.move(itraj[:, i])
+            # if fingers[0].readyToMove():
+            #     fingers[0].move(itraj[:, i])
+            # else:
+            #     i -= 1
             time.sleep(0.005)
             # print(time.time()-start)
-            # print(finger.servos[1].getCurrent())
+            # print(fingers[0].servos[1].getCurrent())
 
 
 if __name__ == '__main__':
