@@ -4,9 +4,9 @@ import lss_const as lssc
 import time
 
 comport = 'COM6'
-servoID1 = 31
-servoID2 = 32
-servoID3 = 33
+servoID1 = 21
+servoID2 = 22
+servoID3 = 23
 
 baudrate = lssc.LSS_DefaultBaud
 lss.initBus(comport, baudrate)
@@ -20,7 +20,7 @@ myLSS2.setColorLED(2, lssc.LSS_SetConfig)
 myLSS3.setColorLED(3, lssc.LSS_SetConfig)
 
 # myLSS2.setOriginOffset(-1350, lssc.LSS_SetConfig)
-myLSS3.setOriginOffset(-450, lssc.LSS_SetConfig)
+# myLSS3.setOriginOffset(-450, lssc.LSS_SetConfig)
 
 
 # myLSS1.reset()

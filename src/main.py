@@ -118,7 +118,7 @@ def circleTrajectoryGen(radius, height, center, points):
     return np.array([x, y, z])
 
 
-def inverseTracjectoryGen(traj, fun):
+def inverseTracjectoryGen(traj, fun, plotFlag = False):
     points = max(traj.shape)
     itraj = np.zeros(traj.shape)
     p = np.arange(0, points, 1)
@@ -126,13 +126,39 @@ def inverseTracjectoryGen(traj, fun):
         iJ, err = fun(traj[:, i], itraj[:, i - 1])
         itraj[:, i] = iJ
 
-    fig = plt.figure()
-    plt.plot(p, itraj[0, :])
-    plt.plot(p, itraj[1, :])
-    plt.plot(p, itraj[2, :])
-    plt.show()
+    if plotFlag == True:
+        fig = plt.figure()
+        plt.plot(p, itraj[0, :])
+        plt.plot(p, itraj[1, :])
+        plt.plot(p, itraj[2, :])
+        plt.show()
 
     return itraj
+
+
+def spinTrajectoryGen(radius, height, depth, points, returnspeed, fingernum, plotflag=False):
+    th = np.linspace((2*pi/5)*fingernum, (2*pi/5)*(fingernum+1), points)
+    idx = np.linspace(-points/returnspeed, points/returnspeed, points/returnspeed)
+
+    x = radius * np.cos(th)
+    y = radius * np.sin(th) + 30
+    z1 = np.ones(x.shape)*height
+
+    z2 = (depth) / (points / returnspeed) ** 2 * idx ** 2 - depth + height
+
+    xf = np.append(x, np.flip(x)[::returnspeed])
+    yf = np.append(y, np.flip(y)[::returnspeed])
+    zf = np.append(z1, z2)
+    traj = np.array([xf, yf, zf])
+
+    if plotflag is True:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        plt.plot(xf, yf, zf)
+        ax.axis('equal')
+        plt.show()
+
+    return traj
 
 
 class trajectoryKinematics():
@@ -246,20 +272,11 @@ def skew(v):
 
 
 def main():
-    # initialize servos
+
+    # initialize serial bus
     comport = 'COM6'
-    servoID1 = 11
-    servoID2 = 12
-    servoID3 = 13
     baudrate = lssc.LSS_DefaultBaud
     lss.initBus(comport, baudrate)
-    myLSS1 = lss.LSS(servoID1)
-    myLSS2 = lss.LSS(servoID2)
-    myLSS3 = lss.LSS(servoID3)
-
-    # Create finger object
-    finger = Finger([myLSS1, myLSS2, myLSS3])
-    # fingers[0].reset()
 
     fingers = [Finger([lss.LSS(11),lss.LSS(12),lss.LSS(13)]),
                Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)]),
@@ -268,34 +285,32 @@ def main():
                Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)])]
     for fi in fingers:
         fi.reset()
-    # fingers[0].reset()
+
     # Move to desired starting position
     pos = [0, 10, 150]
-
     iJ, err = fingers[0].ikine(pos, fingers[0].J)
     for fi in fingers:
         fi.move(iJ)
-    pos = fingers[0].fkine(iJ)
-    print(iJ, err, pos)
 
-    # generate circle trajectory
-    points = 1000
-    traj = circleTrajectoryGen(50, 175, [0, 30], points)
-    itraj = inverseTracjectoryGen(traj, fingers[0].ikine)
+    # # generate circle trajectory
+    # points = 1000
+    # traj = circleTrajectoryGen(50, 175, [0, 30], points)
+    # itraj = inverseTracjectoryGen(traj, fingers[0].ikine)
+
+    # generate spinning trajectory
+    points = 750
+    traj = []
+    itraj = []
+    for i in range(0, 5):
+        traj.append(spinTrajectoryGen(50, 175, 20, points, 2, i, plotflag=False))
+        itraj.append(inverseTracjectoryGen(traj[i], fingers[0].ikine))
 
     # Loop through trajectory
     while True:
-        for i in range(0, points):
-            # start = time.time()
-            for fi in fingers:
-                fi.move(itraj[:, i])
-            # if fingers[0].readyToMove():
-            #     fingers[0].move(itraj[:, i])
-            # else:
-            #     i -= 1
+        for i in range(0, max(traj[0].shape)):
+            for j in range(0, 5):
+                fingers[j].move(itraj[j][:, i])
             time.sleep(0.005)
-            # print(time.time()-start)
-            # print(fingers[0].servos[1].getCurrent())
 
 
 if __name__ == '__main__':
