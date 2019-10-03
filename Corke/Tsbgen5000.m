@@ -6,12 +6,12 @@ function Tsb = Tsbgen5000(theta)
           0, 0, 0, 1];
 
   % Revolute joint 1
-  w1 = [0, 1, 0]';
+  w1 = [0, -1, 0]';
   p1 = [0, 0, 41]';
   eX1 = expogen4000(p1, w1, theta(1));
 
   % Revolute joint 2
-  w2 = [1, 0, 0]';
+  w2 = [-1, 0, 0]';
   p2 = [0, 56, 41]';
   eX2 = expogen4000(p2, w2, theta(2));
 

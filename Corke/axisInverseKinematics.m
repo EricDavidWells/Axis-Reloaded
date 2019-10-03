@@ -26,11 +26,11 @@ for ii = 0:4
   Tab{ii+1} = Tas*Tsb;
 end
 
-% Power of Exponentials Method (forward kinematics)-> Symbolic
-syms j1 j2 j3 real
-Tsb = Tsbgen5000([j1, j2, j3]);
-Tas = [Rgamma(0), [-100*sind(0); 100*cosd(0); 0]; [0, 0, 0], 1];
-Tab = simplify(Tas*Tsb);
+% % Power of Exponentials Method (forward kinematics)-> Symbolic
+% syms j1 j2 j3 real
+% Tsb = Tsbgen5000([j1, j2, j3]);
+% Tas = [Rgamma(0), [-100*sin(0); 100*cos(0); 0]; [0, 0, 0], 1];
+% Tab = simplify(Tas*Tsb);
 
 % Symbolic inverse kinematics
 % syms x y z real
@@ -41,26 +41,31 @@ Tab = simplify(Tas*Tsb);
 % S = solve([e1 e2 e3], [j1 j2 j3])
 
 % Numerical Inverse Kinematics
-theta0 = [0, 0, 0];                                % initial guess
+
+theta0 = [2, 2, 2];                                % initial guess
 pdes = [90; 100; 150];                             % desired end effector position
 fkin = @(theta)(AxisReloadedPoseCalc(0, theta));   % function to compute pose of finger 0
 fpos = @(T)T(1:3, 4);                              % function to extract position from pose
 err = @(theta) norm(fpos(fkin(theta)) - pdes);     % error between guess and desired
 
-% fminsearch method
-options = optimset('TolFun', 0.001);
-tic;
-[theta, error] = fminsearch(err, theta0, options)
-toc
-
-% unconstrained fminunc method
-options = optimoptions('fminunc', 'ObjectiveLimit', 0.001);
-tic;
-[theta, error] = fminunc(err, theta0, options)
-toc
+% % fminsearch method
+% options = optimset('TolFun', 0.001);
+% tic;
+% [theta, error] = fminsearch(err, theta0, options)
+% toc
+% 
+% % unconstrained fminunc method
+% options = optimoptions('fminunc', 'ObjectiveLimit', 0.001);
+% tic;
+% [theta, error] = fminunc(err, theta0, options)
+% toc
 
 % constrained fmincon method
 options = optimoptions('fmincon', 'ObjectiveLimit', 0.001);
 tic;
-[theta, error] = fmincon(err, theta0, [],[],[],[],[-pi,-pi,-pi], [pi,pi,pi],[], options)
+[theta, error] = fmincon(err, [0, 0, 0], [],[],[],[],[-pi,-pi,-pi], [pi,pi,pi],[], options);
 toc
+
+disp(fpos(fkin(theta0)))
+disp(theta)
+disp(error)
