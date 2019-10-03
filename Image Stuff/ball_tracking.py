@@ -24,14 +24,14 @@ args = vars(ap.parse_args())
 # list of tracked points
 # greenLower = (29, 86, 6)
 # greenUpper = (64, 255, 255)
-greenLower = (40,104,47)
-greenUpper = (114,255,136)
+greenLower = (69,53,26)
+greenUpper = (134,196,176)
 pts = deque(maxlen=args["buffer"])
 
 # if a video path was not supplied, grab the reference
 # to the webcam
 if not args.get("video", False):
-	vs = VideoStream(src=2).start()
+	vs = VideoStream(src=1).start()
 
 # otherwise, grab a reference to the video file
 else:
@@ -72,7 +72,7 @@ while True:
 		cv2.CHAIN_APPROX_SIMPLE)
 	cnts = imutils.grab_contours(cnts)
 	center = None
-
+	cv2.rectangle(frame,(250, 130), (350, 190),(255, 255, 0), 2)
 	# only proceed if at least one contour was found
 	if len(cnts) > 0:
 		# find the largest contour in the mask, then use
@@ -90,6 +90,11 @@ while True:
 			cv2.circle(frame, (int(x), int(y)), int(radius),
 				(0, 255, 255), 2)
 			cv2.circle(frame, center, 5, (0, 0, 255), -1)
+			if (x<250) or (x>350) or (y<130) or (y> 190):
+				print('Out of range!')
+			else:
+				print(str(x)+' '+str(y))
+			
 
 	# update the points queue
 	pts.appendleft(center)
