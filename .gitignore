@@ -1,4 +1,5 @@
 *.pyc
 *.asv
 *.*.pyc
+src/__pycache__
 .vscode
