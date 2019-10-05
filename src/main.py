@@ -39,7 +39,7 @@ class Hand():
     def reset(self, waittime=3):
         for fi in self.fingers:
             fi.reset()
-        time.sleep(waittime)
+        #time.sleep(waittime)
 
 
 class Finger():
@@ -182,8 +182,9 @@ def spinTrajectoryGen(radius, height, depth, points, returnspeed, fingernum, plo
     xf = np.append(x, np.flip(x)[::returnspeed])
     yf = np.append(y, np.flip(y)[::returnspeed])
     zf = np.append(z1, z2)
-    traj = np.array([xf, yf, zf])
-
+    pLength= max(xf.shape)
+    traj = np.array([np.roll(xf,round(points*fingernum)), np.roll(yf,round(points*fingernum)), np.roll(zf,round(points*fingernum))])
+    # traj = np.array([xf,yf,zf])
     if plotflag is True:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -316,20 +317,20 @@ def Rgamma(gamma):
 def main():
 
     # # initialize serial bus
-    # comport = 'COM6'
-    # baudrate = lssc.LSS_DefaultBaud
-    # lss.initBus(comport, baudrate)
+    comport = 'COM3'
+    baudrate = lssc.LSS_DefaultBaud
+    lss.initBus(comport, baudrate)
 
     fingers = [Finger([lss.LSS(11),lss.LSS(12),lss.LSS(13)]),
                Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)]),
-               Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)]),
                Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)]),
+               Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)]),
                Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)])]
 
     fangles = [0, 72/180*pi, 72*2/180*pi, 72*3/180*pi, 72*4/180*pi]
-    radius = 100
+    radius = 75
     hand = Hand(fingers, fangles, radius)
-
+    hand.reset()
     theta = [2, 2, 2]
     pos = hand.fkine(theta, hand.fingers[0], hand.fangles[0])
     print(pos)
@@ -337,19 +338,25 @@ def main():
     iJ, err = hand.ikine(posdesired, [0, 0, 0], hand.fingers[0], hand.fangles[0])
     print(iJ, err)
 
-    points = 750
+    points = 1800
     traj = []
     itraj = []
     for i in range(0, len(hand.fingers)):
-        traj.append(spinTrajectoryGen(100, 150, 20, points, 2, i, plotflag=True))
+        if i == 4:
+            traj.append(spinTrajectoryGen(125, 177, 30, points, 2, i, plotflag=True))
+        else:
+            traj.append(spinTrajectoryGen(125, 175, 30, points, 2, i, plotflag=True))
+        # traj.append(spinTrajectoryGen(125, 150, 20, points, 2, i, plotflag=True))
         ikinehelper = lambda pd, guess: hand.ikine(pd, guess, hand.fingers[i], hand.fangles[i])
         itraj.append(inverseTracjectoryGen(traj[i], ikinehelper, plotFlag=True))
-
+        print("Set finger "+str(i+1)+" trajectory")
+    print('Starting motion')
+    time.sleep(.5)
     while True:
         for i in range(0, max(traj[0].shape)):
             for j in range(0, 5):
-                fingers[j].move(itraj[j][:, i])
-            time.sleep(0.005)
+                hand.fingers[j].move(itraj[j][:, i])
+            # time.sleep(0.005)
     # for fi in fingers:
     #     fi.reset()
     #
