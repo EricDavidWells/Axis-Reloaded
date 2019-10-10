@@ -12,49 +12,61 @@ import time
 import pickle
 
 
-class Hand():
+class Hand:
     def __init__(self, fingers_, fangles_, radius_):
         self.fingers = fingers_
         self.fangles = fangles_
         self.radius = radius_
+        self.Tas = [self.Tasgen(fnum, fangle) for fnum, fangle in enumerate(fangles_)]
+        self.J = [fi.J for fi in self.fingers]
+        self.pos = [self.fkine(fi.J, i) for i, fi in enumerate(self.fingers)]
 
-    def fkine(self, theta, finger, fangle):
+    def Tasgen(self, fingernum, fangle):
         r = self.radius
         R = Rgamma(fangle)
-        p = np.array([-r*sin(fangle), r*cos(fangle), 0]).reshape(3,1)
+        p = np.array([-r * sin(fangle), r * cos(fangle), 0]).reshape(3, 1)
         temp = np.hstack((R, p))
-        Tas = np.vstack((temp, [0,0,0,1]))
-        Tsb = finger.Tsbgen(theta)
-        Tab  = Tas@Tsb
+        Tas = np.vstack((temp, [0, 0, 0, 1]))
+        return Tas
+
+    def fkine(self, theta, fnum):
+        Tsb = self.fingers[fnum].Tsbgen(theta)
+        Tas = self.Tas[fnum]
+        Tab = Tas@Tsb
         pos = Tab[0:3, 3]
         return pos
 
-    def ikine(self, posDesired, guess, finger, fangle):
-        iJ = root(self.ikine_err, guess, args=(posDesired, finger, fangle), tol=0.001)
+    def ikine(self, posDesired, guess, fingernum):
+        iJ = root(self.ikine_err, guess, args=(posDesired, fingernum), tol=0.001)
         return iJ.x, iJ.fun
 
-    def ikine_err(self, theta, posDesired, finger, fangle):
-        e = self.fkine(theta, finger, fangle) - np.array(posDesired)
+    def ikine_err(self, theta, posDesired, fingernum):
+        e = self.fkine(theta, fingernum) - np.array(posDesired)
         return e[0], e[1], e[2]
 
     def reset(self, waittime=3):
         for fi in self.fingers:
             fi.reset()
-        #time.sleep(waittime)
 
-    def move(self, theta):
+    def move(self, theta, fingernum):
+        self.fingers[fingernum].move(theta)
+        self.J[fingernum] = self.fingers[fingernum].J
+        self.pos[fingernum] = self.fkine(self.J[fingernum], fingernum)
+
+    def moveall(self, theta):
         for fi in self.fingers:
             fi.move(theta)
+        self.J = [fi.J for fi in self.fingers]
+        self.pos = [self.fkine(fi.J, i) for i, fi in enumerate(self.fingers)]
 
 
-class Finger():
+class Finger:
     def __init__(self, servoarray, zoffset):
         """
 
         :param J0: initial theta vector of finger
         """
         self.servos = servoarray
-        self.J = np.array([0, 0, 0])
 
         # All kinematic constants defined
         self.Tsb0 = np.array([[1,0,0,0],
@@ -68,6 +80,8 @@ class Finger():
         self.w3 = np.array([1, 0, 0]).reshape(3,1)
         self.p3 = np.array([0, 55.15, 104.5]).reshape(3,1)
         self.Jlim = np.array([[-90, 90], [-30, 110], [-80, 120]])
+        self.J = np.array([0, 0, 0])
+        self.pos = self.fkine(self.J)
 
     def fkine(self, theta):
         """
@@ -168,6 +182,8 @@ class Finger():
             Jdeg[i] = np.clip(Jdeg[i], self.Jlim[i, 0], self.Jlim[i, 1])
             value = int(Jdeg[i]*10)
             self.servos[i].move(value)
+        self.J = J
+        self.pos = self.fkine(J)
 
     def reset(self, waittime=3):
         for i in range(0, len(self.servos)):
@@ -182,93 +198,98 @@ class Finger():
             # self.servos[i].setAngularHoldingStiffness(4)
 
 
-def circleTrajectoryGen(radius, height, center, points):
-    th = np.linspace(0, 2*pi, points)
-    x = radius*np.cos(th) + center[0]
-    y = radius*np.sin(th) + center[1]
-    z = np.ones(th.shape)*height
+class TrajectoryGen:
+    def __init__(self):
+        pass
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    plt.plot(x, y, z)
-    ax.axis('equal')
-    plt.show()
+    def circle(radius, height, center, points):
+        th = np.linspace(0, 2*pi, points)
+        x = radius*np.cos(th) + center[0]
+        y = radius*np.sin(th) + center[1]
+        z = np.ones(th.shape)*height
 
-    return np.array([x, y, z])
-
-
-def inverseTracjectoryGen(traj, fun, plotFlag = False):
-    """
-    Creates the inverse kinematics from the forward kinematics 'traj' based on the inverse kinematics function fun
-    :param traj: numpy array of shape 3xN.  [[x1, x2, ...., xn], [y1, y2, ...., yn], [z1, z2, ...., zn]
-    :param fun: function that computes the error of the forward kinematics guessed joint angles and the desired position
-                from the trajectory.  Must take as parameters a numpy array of [xd, yd, zd] and a guess of the correct
-                inverse kinematics of [th1, th2, th3].  Must return the error between the actual position and position
-                from the forward kinematics of the guess.
-    :return: itraj: numpy array of shape 3xN containing joint angles
-    """
-    points = max(traj.shape)
-    itraj = np.zeros(traj.shape)
-    p = np.arange(0, points, 1)
-    for i in range(0, points):
-        iJ, err = fun(traj[:, i], itraj[:, i - 1])
-        itraj[:, i] = iJ
-
-    if plotFlag == True:
-        fig = plt.figure()
-        plt.plot(p, itraj[0, :])
-        plt.plot(p, itraj[1, :])
-        plt.plot(p, itraj[2, :])
-        plt.xlabel("i")
-        plt.ylabel("theta (rads)")
-        plt.legend(["theta1", "theta2", "theta3"])
-        plt.show()
-
-    return itraj
-
-
-def spinTrajectoryGen(radius, height, depth, points, returnspeed, fingernum, offset, plotflag=False):
-    th = np.linspace((2*pi/5)*fingernum + offset, (2*pi/5)*(fingernum+1) - offset, points)-pi/5
-    idx = np.linspace(-points/returnspeed, points/returnspeed, points/returnspeed)
-
-    x = -radius * np.sin(th)
-    y = radius * np.cos(th)
-    z1 = np.ones(x.shape)*height
-
-    z2 = (depth) / (points / returnspeed) ** 2 * idx ** 2 - depth + height
-
-    xf = np.append(x, np.flip(x)[::returnspeed])
-    yf = np.append(y, np.flip(y)[::returnspeed])
-    zf = np.append(z1, z2)
-    pLength= max(xf.shape)
-    traj = np.array([np.roll(xf,round(points*fingernum)), np.roll(yf,round(points*fingernum)), np.roll(zf,round(points*fingernum))])
-
-    if plotflag is True:
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
-        plt.plot(xf, yf, zf)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
+        plt.plot(x, y, z)
         ax.axis('equal')
         plt.show()
 
-    return traj
+        return np.array([x, y, z])
 
 
-def linearTrajectoryGen(startpos, endpos, points, plotflag=True):
-    traj = np.linspace(startpos, endpos, points).transpose()
+    def inverse(traj, fun, plotFlag = False):
+        """
+        Creates the inverse kinematics from the forward kinematics 'traj' based on the inverse kinematics function fun
+        :param traj: numpy array of shape 3xN.  [[x1, x2, ...., xn], [y1, y2, ...., yn], [z1, z2, ...., zn]
+        :param fun: function that computes the error of the forward kinematics guessed joint angles and the desired position
+                    from the trajectory.  Must take as parameters a numpy array of [xd, yd, zd] and a guess of the correct
+                    inverse kinematics of [th1, th2, th3].  Must return the error between the actual position and position
+                    from the forward kinematics of the guess.
+        :return: itraj: numpy array of shape 3xN containing joint angles
+        """
+        points = max(traj.shape)
+        itraj = np.zeros(traj.shape)
+        p = np.arange(0, points, 1)
+        for i in range(0, points):
+            iJ, err = fun(traj[:, i], itraj[:, i - 1])
+            itraj[:, i] = iJ
 
-    if plotflag is True:
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-        plt.plot(traj[0,:], traj[1,:], traj[2,:])
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-        ax.axis('equal')
-        plt.show()
-    return traj
+        if plotFlag == True:
+            fig = plt.figure()
+            plt.plot(p, itraj[0, :])
+            plt.plot(p, itraj[1, :])
+            plt.plot(p, itraj[2, :])
+            plt.xlabel("i")
+            plt.ylabel("theta (rads)")
+            plt.legend(["theta1", "theta2", "theta3"])
+            plt.show()
+
+        return itraj
+
+
+    def spin(radius, height, depth, points, returnspeed, fingernum, offset, plotflag=False):
+        th = np.linspace((2*pi/5)*fingernum + offset, (2*pi/5)*(fingernum+1) - offset, points)-pi/5
+        returnpoints = points/returnspeed
+        idx = np.linspace(-returnpoints/2, returnpoints/2, returnpoints)
+
+        x = -radius * np.sin(th)
+        y = radius * np.cos(th)
+        z1 = np.ones(x.shape)*height
+
+        z2 = depth/((points/returnspeed/2)**2)*(idx**2)+height-depth
+
+        xf = np.append(x, np.flip(x)[::returnspeed])
+        yf = np.append(y, np.flip(y)[::returnspeed])
+        zf = np.append(z1, z2)
+        pLength= max(xf.shape)
+        traj = np.array([np.roll(xf,round(points*fingernum)), np.roll(yf,round(points*fingernum)), np.roll(zf,round(points*fingernum))])
+
+        if plotflag is True:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.plot(xf, yf, zf)
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+            ax.axis('equal')
+            plt.show()
+
+        return traj
+
+
+    def linear(startpos, endpos, points, plotflag=True):
+        traj = np.linspace(startpos, endpos, points).transpose()
+
+        if plotflag is True:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.plot(traj[0,:], traj[1,:], traj[2,:])
+            ax.set_xlabel("x")
+            ax.set_ylabel("y")
+            ax.set_zlabel("z")
+            ax.axis('equal')
+            plt.show()
+        return traj
 
 
 
@@ -300,34 +321,41 @@ def Adjoint(T):
 
 def main():
 
-    linearTrajectoryGen([0, 0, 0], [10, 10, 100], 1000)
+
+
     # # Initialize serial bus
     # comport = 'COM7'
     # baudrate = lssc.LSS_DefaultBaud
     # lss.initBus(comport, baudrate)
     #
-    # fingers = [Finger([lss.LSS(11), lss.LSS(12),lss.LSS(13)], 2),
-    #            Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)], 0),
-    #            Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)], 0.5),
-    #            Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)], 0),
-    #            Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)], 0)]
-    #
-    # fangles = [0, 72/180*pi, 72*2/180*pi, 72*3/180*pi, 72*4/180*pi]
-    # radius = 69
-    # hand = Hand(fingers, fangles, radius)
-    # hand.reset()
-    # hand.move(np.array([0, 0, 0]))
+    fingers = [Finger([lss.LSS(11), lss.LSS(12),lss.LSS(13)], 2),
+               Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)], 0),
+               Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)], 0.5),
+               Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)], 0),
+               Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)], 0)]
 
-    # # Trajectory generation
-    # points = 2400
-    # trajoffset = 2*pi/180
-    # traj = []
-    # itraj = []
-    # for i in range(0, len(hand.fingers)):
-    #     traj.append(spinTrajectoryGen(125, 175, 30, points, 4, i, trajoffset, plotflag=True))
-    #     ikinehelper = lambda pd, guess: hand.ikine(pd, guess, hand.fingers[i], hand.fangles[i])
-    #     itraj.append(inverseTracjectoryGen(traj[i], ikinehelper, plotFlag=True))
-    #     print("Set finger "+str(i+1)+" trajectory")
+    fangles = [0, 72/180*pi, 72*2/180*pi, 72*3/180*pi, 72*4/180*pi]
+    radius = 69
+    hand = Hand(fingers, fangles, radius)
+    # hand.reset()
+    pos = [0, 125, 175]
+    iJ, err = hand.ikine(pos,[0, 0, 0], 0)
+    hand.moveall(iJ)
+
+    # Trajectory generation
+    points = 1000
+    trajoffset = 2*pi/180
+    traj = []
+    itraj = []
+    for i in range(0, len(hand.fingers)):
+        traj.append(TrajectoryGen.spin(125, 175, 30, points, 4, i, trajoffset, plotflag=True))
+        # spos = hand.pos[i]
+        # epos = hand.pos[i] + np.array([30, 0, 0])
+        # traj.append(linearTrajectoryGen(spos,  epos, points))
+
+        ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=i)
+        itraj.append(TrajectoryGen.inverse(traj[i], ikinehelper, plotFlag=True))
+        print("Set finger "+str(i+1)+" trajectory")
     # pickle.dump(itraj, open("itraj2400_1fingeroff.p", "wb"))
 
     # itraj = pickle.load(open("itraj2400.p", "rb"))
@@ -339,7 +367,6 @@ def main():
     #     for i in range(0, max(itraj[0].shape)):
     #         for j in range(0, 5):
     #             hand.fingers[j].move(itraj[j][:, i])
-
 
 
 if __name__ == '__main__':
