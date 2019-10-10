@@ -76,11 +76,11 @@ class Finger():
         """
         Compute inverse kinematics joint angles of desired position of end effector relative to finger base
         """
-        iJ = root(self.ikine_err, guess, args=posDesired, tol=0.001)
-        return iJ.x, iJ.fun
+        itheta = root(self.ikine_err, guess, args=posDesired, tol=0.001)
+        return itheta.x, itheta.fun
 
-    def ikine_err(self, J, posDesired):
-        e = self.fkine(J) - np.array(posDesired)
+    def ikine_err(self, theta, posDesired):
+        e = self.fkine(theta) - np.array(posDesired)
         return e[0], e[1], e[2]
 
     def Tsbgen(self, theta):
@@ -98,6 +98,7 @@ class Finger():
         temp = np.hstack((eS, G@z))
         eX = np.vstack((temp, [0, 0, 0, 1]))
         return eX
+
     def readyToMove(self):
         ready = True
         # for i in range(0, len(self.servos)):
@@ -112,6 +113,49 @@ class Finger():
             #     ready = False
             #     break
         return ready
+
+    def spaceJacobian(self, theta):
+        X1 = self.exiGen(self.w1, self.p1)
+        eX1 = self.eXgen(self.p1, self.w1, theta[0])
+        Js1 = X1
+
+        X2 = self.exiGen(self.w2, self.p2)
+        eX2 = self.eXgen(self.p2, self.w2, theta[1])
+        Js2 = Adjoint(eX1)@X2
+
+        X3 = self.exiGen(self.w3, self.p3)
+        Js3 = Adjoint(eX1@eX2)@X3
+
+        temp = np.hstack((Js1, Js2))
+        Js = np.hstack((temp, Js3))
+        return Js
+
+    def bodyJacobian(self, theta):
+        Js = self.spaceJacobian(theta)
+        Tsb = self.Tsbgen(theta)
+        Tbs = np.linalg.inv(Tsb)
+        Jb = Adjoint(Tbs)@Js
+        return Jb
+
+    def ikine_jacobian(self, Tsd, guess, tol):
+
+        Tsb = self.Tsbgen(guess)
+        Tbs = np.linalg.inv(Tsb)
+        temp = Tbs@Tsd
+        Vb = np.log(Tbs@Tsd)
+
+
+        while np.linalg.norm(Vb) > tol:
+            Tsb = self.Tsbgen(guess)
+            Tbs = np.linalg.inv(Tsb)
+            Vb = np.log(Tbs@Tsd)
+            guess = guess + self.bodyJacobian(guess)@Vb
+
+        return guess
+
+    def exiGen(self, w, p):
+        exi = np.vstack((self.w1, np.cross(-self.w1.reshape(1,3), self.p1.reshape(1,3)).reshape(3,1)))
+        return exi
 
     def move(self, J):
         Jdeg = J*180/pi
@@ -198,114 +242,13 @@ def spinTrajectoryGen(radius, height, depth, points, returnspeed, fingernum, plo
     return traj
 
 
-class trajectoryKinematics():
-    def __init__(self, claw, radius, points, elevation, depth, cmdRate, travelTime, returnTime):
-        self.claw = claw                # Claw number 0, 1, 2, ...
-        self.radius = radius            # Radius of disk being spun
-        self.points = points            # Number of data points for trajectory curve
-        self.elevation = elevation      # Height of spinning disk
-        self.depth = depth              # Depth of retraction of claw
-        self.cmdRate = cmdRate          # How often to update in seconds
-        self.travelTime = travelTime    # Amount of time claw is in contact with disk
-        self.returnTime = returnTime    # Time in seconds claw is not in contact with disk
-
-        self.x = 0
-        self.y = 0
-        self.z = 0
-
-
-    def trajectoryGen(self, plotFlag):
-        th = np.linspace((2*np.pi/5)*self.claw, (2*np.pi/5)*(self.claw+1), self.points)
-        idx = np.linspace(-self.points/2, self.points/2, self.points)
-
-        self.x = self.radius * np.cos(th)
-        self.y = self.radius * np.sin(th)
-        self.z = (self.depth)/(self.points/2)**2 * idx**2 - self.depth + self.elevation
-
-        if plotFlag is True:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            plt.plot(self.x,self.y,np.linspace(0, 0, self.points))
-            plt.plot(self.x,self.y,self.z)
-            ax.axis('equal')
-            plt.show()
-
-    def simulate(self, plotFlag):
-        ptsTravel = np.linspace(0, self.points, math.floor(self.travelTime/self.cmdRate), endpoint=False)
-        ptsReturn = np.linspace(0, self.points, math.floor(self.returnTime/self.cmdRate), endpoint=False)
-
-        tList = []
-        xList = []
-        yList = []
-        zList = []
-        j1List = []
-        j2List = []
-        j3List = []
-        start = timer()
-
-        # Travel to endpoint
-        for ii in range(len(ptsTravel)):
-            start = timer()
-            self.xx = self.x[np.int64(ptsTravel[ii])]
-            self.yy = self.y[np.int64(ptsTravel[ii])]
-            self.zz = self.elevation
-            self.inverseKinematics()
-            end = timer()
-
-            tList.append(end-start)
-            xList.append(self.xx)
-            yList.append(self.yy)
-            zList.append(self.zz)
-            j1List.append(self.jointDesired1)
-            j2List.append(self.jointDesired2)
-            j3List.append(self.jointDesired3)
-
-        # Reverse x and y
-        self.x = self.x[::-1]
-        self.y = self.y[::-1]
-
-        # Travel back to start
-        for ii in range(len(ptsReturn)):
-            start = timer()
-            self.xx = self.x[np.int64(ptsReturn[ii])]
-            self.yy = self.y[np.int64(ptsReturn[ii])]
-            self.zz = self.z[np.int64(ptsReturn[ii])]
-            self.inverseKinematics()
-            end = timer()
-
-            tList.append(end-start)
-            xList.append(self.xx)
-            yList.append(self.yy)
-            zList.append(self.zz)
-            j1List.append(self.jointDesired1)
-            j2List.append(self.jointDesired2)
-            j3List.append(self.jointDesired3)
-
-            self.jointActual1 = self.jointDesired1
-            self.jointActual2 = self.jointDesired2
-            self.jointActual3 = self.jointDesired3
-
-
-        if plotFlag is True:
-            fig = plt.figure()
-            ax = fig.add_subplot(111, projection='3d')
-            plt.plot(xList, yList, zList)
-            ax.axis('equal')
-            plt.show()
-
-            plt.plot(tList)
-            plt.show()
-
-            plt.plot(j1List)
-            plt.plot(j2List)
-            plt.plot(j3List)
-            plt.show()
-
-
 def skew(v):
-        a, b, c = v[0,0], v[1,0], v[2,0]
-        s = np.array([[0,-c,b],[c,0,-a],[-b,a,0]])
-        return s
+    a = v[0,0]
+    b = v[1,0]
+    c = v[2,0]
+    s = np.array([[0,-c,b],[c,0,-a],[-b,a,0]])
+    return s
+
 
 def Rgamma(gamma):
     R = np.array([[cos(gamma), -sin(gamma), 0],
@@ -314,48 +257,73 @@ def Rgamma(gamma):
     return R
 
 
+def Adjoint(T):
+    R = T[0:3, 0:3]
+    p = T[0:3,3].reshape(3,1)
+    temp = np.hstack((R, np.zeros([3,3])))
+    temp2 = np.hstack((skew(p)@R, R))
+    Ad = np.vstack((temp, temp2))
+    return Ad
+
+
+
 def main():
 
-    # # initialize serial bus
-    comport = 'COM3'
-    baudrate = lssc.LSS_DefaultBaud
-    lss.initBus(comport, baudrate)
+    finger = Finger([0, 0, 0])
+    theta = [0, 0, 0]
+    posDesired = np.array([0, 130, 150])
+    # print(finger.ikine(posDesired, theta))
 
-    fingers = [Finger([lss.LSS(11),lss.LSS(12),lss.LSS(13)]),
-               Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)]),
-               Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)]),
-               Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)]),
-               Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)])]
+    Tsd = np.ones([3,3])
+    Tsd = np.hstack((Tsd, posDesired.reshape(3,1)))
+    Tsd = np.vstack((Tsd, [0, 0, 0, 1]))
+    guess = finger.ikine_jacobian(Tsd, theta, 0.0001)
+    print(guess)
+    # finger.bodyJacobian(theta)
 
-    fangles = [0, 72/180*pi, 72*2/180*pi, 72*3/180*pi, 72*4/180*pi]
-    radius = 75
-    hand = Hand(fingers, fangles, radius)
-    hand.reset()
-    theta = [2, 2, 2]
-    pos = hand.fkine(theta, hand.fingers[0], hand.fangles[0])
-    print(pos)
-    posdesired = [100, 0, 150]
-    iJ, err = hand.ikine(posdesired, [0, 0, 0], hand.fingers[0], hand.fangles[0])
-    print(iJ, err)
+    # # # initialize serial bus
+    # comport = 'COM3'
+    # baudrate = lssc.LSS_DefaultBaud
+    # lss.initBus(comport, baudrate)
+    #
+    # fingers = [Finger([lss.LSS(11),lss.LSS(12),lss.LSS(13)]),
+    #            Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)]),
+    #            Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)]),
+    #            Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)]),
+    #            Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)])]
+    #
+    # fangles = [0, 72/180*pi, 72*2/180*pi, 72*3/180*pi, 72*4/180*pi]
+    # radius = 75
+    # hand = Hand(fingers, fangles, radius)
+    # hand.reset()
+    # theta = [2, 2, 2]
+    # pos = hand.fkine(theta, hand.fingers[0], hand.fangles[0])
+    # print(pos)
+    # posdesired = [100, 0, 150]
+    # iJ, err = hand.ikine(posdesired, [0, 0, 0], hand.fingers[0], hand.fangles[0])
+    # print(iJ, err)
+    #
+    # points = 1800
+    # traj = []
+    # itraj = []
+    # for i in range(0, len(hand.fingers)):
+    #     if i == 4:
+    #         traj.append(spinTrajectoryGen(125, 177, 30, points, 2, i, plotflag=True))
+    #     else:
+    #         traj.append(spinTrajectoryGen(125, 175, 30, points, 2, i, plotflag=True))
+    #     # traj.append(spinTrajectoryGen(125, 150, 20, points, 2, i, plotflag=True))
+    #     ikinehelper = lambda pd, guess: hand.ikine(pd, guess, hand.fingers[i], hand.fangles[i])
+    #     itraj.append(inverseTracjectoryGen(traj[i], ikinehelper, plotFlag=True))
+    #     print("Set finger "+str(i+1)+" trajectory")
+    # print('Starting motion')
+    # time.sleep(.5)
+    # while True:
+    #     for i in range(0, max(traj[0].shape)):
+    #         for j in range(0, 5):
+    #             hand.fingers[j].move(itraj[j][:, i])
 
-    points = 1800
-    traj = []
-    itraj = []
-    for i in range(0, len(hand.fingers)):
-        if i == 4:
-            traj.append(spinTrajectoryGen(125, 177, 30, points, 2, i, plotflag=True))
-        else:
-            traj.append(spinTrajectoryGen(125, 175, 30, points, 2, i, plotflag=True))
-        # traj.append(spinTrajectoryGen(125, 150, 20, points, 2, i, plotflag=True))
-        ikinehelper = lambda pd, guess: hand.ikine(pd, guess, hand.fingers[i], hand.fangles[i])
-        itraj.append(inverseTracjectoryGen(traj[i], ikinehelper, plotFlag=True))
-        print("Set finger "+str(i+1)+" trajectory")
-    print('Starting motion')
-    time.sleep(.5)
-    while True:
-        for i in range(0, max(traj[0].shape)):
-            for j in range(0, 5):
-                hand.fingers[j].move(itraj[j][:, i])
+
+
             # time.sleep(0.005)
     # for fi in fingers:
     #     fi.reset()
