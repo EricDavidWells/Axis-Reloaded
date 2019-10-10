@@ -27,18 +27,18 @@ for ii = 0:4
 end
 
 % % Power of Exponentials Method (forward kinematics)-> Symbolic
-% syms j1 j2 j3 real
-% Tsb = Tsbgen5000([j1, j2, j3]);
-% Tas = [Rgamma(0), [-100*sin(0); 100*cos(0); 0]; [0, 0, 0], 1];
-% Tab = simplify(Tas*Tsb);
+syms j1 j2 j3 real
+Tsb = Tsbgen5000([j1, j2, j3]);
+Tas = [Rgamma(0), [-100*sin(0); 100*cos(0); 0]; [0, 0, 0], 1];
+Tab = simplify(Tas*Tsb);
 
 % Symbolic inverse kinematics
-% syms x y z real
-% e1 = x == Tab(1, 4);
-% e2 = y == Tab(2, 4);
-% e3 = z == Tab(3, 4);
+syms x y z real
+e1 = x == Tab(1, 4);
+e2 = y == Tab(2, 4);
+e3 = z == Tab(3, 4);
 
-% S = solve([e1 e2 e3], [j1 j2 j3])
+S = solve([e1 e2 e3], [j1 j2 j3], 'Real', 'true')
 
 % Numerical Inverse Kinematics
 
