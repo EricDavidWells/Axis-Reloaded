@@ -10,6 +10,7 @@ import lss
 import lss_const as lssc
 import time
 import pickle
+from scipy.interpolate import RegularGridInterpolator as rgi
 
 
 class Hand:
@@ -276,8 +277,7 @@ class TrajectoryGen:
 
         return traj
 
-
-    def linear(startpos, endpos, points, plotflag=True):
+    def linear(startpos, endpos, points, plotflag=False):
         traj = np.linspace(startpos, endpos, points).transpose()
 
         if plotflag is True:
@@ -291,8 +291,49 @@ class TrajectoryGen:
             plt.show()
         return traj
 
+    def cubicpointcloudgen(gridstart, gridend, gridpoints, plotFlag=False):
+        x = np.linspace(gridstart[0], gridend[0], gridpoints[0])
+        y = np.linspace(gridstart[1], gridend[1], gridpoints[1])
+        z = np.linspace(gridstart[2], gridend[2], gridpoints[2])
+        xmesh, ymesh, zmesh = np.meshgrid(x, y, z)
 
+        if plotFlag == True:
+            fig = plt.figure()
+            ax = fig.add_subplot(111, projection='3d')
+            plt.plot(xmesh.flatten(), ymesh.flatten(), zmesh.flatten(), 'o')
+            plt.show()
 
+        pointcloud = np.array([xmesh.flatten(), ymesh.flatten(), zmesh.flatten()])
+        return x, y, z, pointcloud
+
+    def inversepointcloud(x, y, z, fun):
+        gridpoints = [x.size, y.size, z.size]
+        data0 = np.zeros(gridpoints)
+        data1 = np.zeros(gridpoints)
+        data2 = np.zeros(gridpoints)
+
+        for i in range(0, gridpoints[0]):
+            for j in range(0, gridpoints[1]):
+                for k in range(0, gridpoints[2]):
+                    iJ, err = fun([x[i], y[j], z[k]], [0, 0, 0])
+                    data0[i, j, k] = iJ[0]
+                    data1[i, j, k] = iJ[1]
+                    data2[i, j, k] = iJ[2]
+
+        return data0, data1, data2
+
+    def interpfungen(x, y, z, data0, data1, data2):
+        fn0 = rgi((x, y, z), data0)
+        fn1 = rgi((x, y, z), data1)
+        fn2 = rgi((x, y, z), data2)
+
+        def fun(pos, guess):
+            postuple = (pos[0], pos[1], pos[2])
+            theta = [fn0(postuple), fn1(postuple), fn2(postuple)]
+            _ = False
+            return theta, _
+
+        return fun
 
 def skew(v):
     a = v[0,0]
@@ -318,9 +359,7 @@ def Adjoint(T):
     return Ad
 
 
-
 def main():
-
 
 
     # # Initialize serial bus
@@ -337,25 +376,94 @@ def main():
     fangles = [0, 72/180*pi, 72*2/180*pi, 72*3/180*pi, 72*4/180*pi]
     radius = 69
     hand = Hand(fingers, fangles, radius)
-    # hand.reset()
-    pos = [0, 125, 175]
-    iJ, err = hand.ikine(pos,[0, 0, 0], 0)
-    hand.moveall(iJ)
+    # # hand.reset()
+    # pos = [0, 125, 175]
+    # iJ, err = hand.ikine(pos,[0, 0, 0], 0)
+    # hand.moveall(iJ)
 
-    # Trajectory generation
+    gridpoints = np.array([30, 30, 30])
+    gridstart = np.array([-70, 100, 140])
+    gridend = np.array([70, 130, 176])
+    x, y, z, pointcloud = TrajectoryGen.cubicpointcloudgen(gridstart, gridend, gridpoints, plotFlag=True)
+
+    ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=0)
+    data0, data1, data2 = TrajectoryGen.inversepointcloud(x, y, z, ikinehelper)
+
+    interpfun = TrajectoryGen.interpfungen(x, y, z, data0, data1, data2)
+
     points = 1000
     trajoffset = 2*pi/180
     traj = []
     itraj = []
-    for i in range(0, len(hand.fingers)):
-        traj.append(TrajectoryGen.spin(125, 175, 30, points, 4, i, trajoffset, plotflag=True))
-        # spos = hand.pos[i]
-        # epos = hand.pos[i] + np.array([30, 0, 0])
-        # traj.append(linearTrajectoryGen(spos,  epos, points))
+    traj = TrajectoryGen.spin(125, 175, 30, points, 4, 0, trajoffset, plotflag=True)
+    ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=0)
 
-        ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=i)
-        itraj.append(TrajectoryGen.inverse(traj[i], ikinehelper, plotFlag=True))
-        print("Set finger "+str(i+1)+" trajectory")
+    start = time.time()
+    itraj = TrajectoryGen.inverse(traj, ikinehelper, plotFlag=False)
+    print(time.time()-start)
+    start = time.time()
+    itraj2 = TrajectoryGen.inverse(traj, interpfun, plotFlag=False)
+    print(time.time()-start)
+    print(np.linalg.norm(itraj-itraj2))
+
+    # gridpointsp = np.array([10, 10, 10])
+    # xp, yp, zp, interp_pointcloud = TrajectoryGen.cubicpointcloudgen(gridstart, gridend, gridpointsp, plotFlag=True)
+    # datap0 = np.zeros(gridpointsp)
+    # datap1 = np.zeros(gridpointsp)
+    # datap2 = np.zeros(gridpointsp)
+    # datatest0 = np.zeros(gridpointsp)
+    # datatest1 = np.zeros(gridpointsp)
+    # datatest2 = np.zeros(gridpointsp)
+    # for i in range(0, gridpointsp[0]):
+    #     for j in range(0, gridpointsp[1]):
+    #         for k in range(0, gridpointsp[2]):
+    #             start1 = time.time()
+    #             datap0[i, j, k] = fn0((xp[i], yp[j], zp[k]))
+    #             datap1[i, j, k] = fn1((xp[i], yp[j], zp[k]))
+    #             datap2[i, j, k] = fn2((xp[i], yp[j], zp[k]))
+    #             end1 = time.time()
+    #             start2 = time.time()
+    #             iJ, err = hand.ikine([xp[i], yp[j], zp[k]], [0, 0, 0], 0)
+    #             datatest0[i, j, k] = iJ[0]
+    #             datatest1[i, j, k] = iJ[1]
+    #             datatest2[i, j, k] = iJ[2]
+    #             end2 = time.time()
+    #             print(end1-start1, end2-start2)
+    # error0 = np.linalg.norm(datap0 - datatest0)
+    # error1 = np.linalg.norm(datap1 - datatest1)
+    # error2 = np.linalg.norm(datap2 - datatest2)
+    #
+    # print(error0, error1, error2)
+
+    # ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=0)
+    # ipointcloud = TrajectoryGen.inverse(pointcloud, ikinehelper, plotFlag=False)
+    # data = np.meshgrid(ipointcloud[0,:], ipointcloud[1,:], ipointcloud[2,:])
+    #
+    # my_interpolating_function = rgi(x, y, z), data)
+    #
+    # interppointcloud = TrajectoryGen.cubicpointcloud(gridstart, gridend, gridpoints*10, plotFlag=False)
+    # values = np.array([interppointcloud[0,:], interppointcloud[1, :], interppointcloud[2, :]])
+    # ipointcloud2 = my_interpolating_function(values)
+
+    inversepointcloud = []
+    # for i in range(0, max(pointcloud.shape)):
+    #     iJ, err = hand.ikine(pointcloud[:,i],[0, 0, 0], 0)
+
+    # # Trajectory generation
+    # points = 1000
+    # trajoffset = 2*pi/180
+    # traj = []
+    # itraj = []
+    # for i in range(0, len(hand.fingers)):
+    #     traj.append(TrajectoryGen.spin(125, 175, 30, points, 4, i, trajoffset, plotflag=1))
+    #
+    #     # spos = hand.pos[i]
+    #     # epos = hand.pos[i] + np.array([30, 0, 0])
+    #     # traj.append(linearTrajectoryGen(spos,  epos, points))
+    #
+    #     ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=i)
+    #     itraj.append(TrajectoryGen.inverse(traj[i], ikinehelper, plotFlag=1))
+    #     print("Set finger "+str(i+1)+" trajectory")
     # pickle.dump(itraj, open("itraj2400_1fingeroff.p", "wb"))
 
     # itraj = pickle.load(open("itraj2400.p", "rb"))
