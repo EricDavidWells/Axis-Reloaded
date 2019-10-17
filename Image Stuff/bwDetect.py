@@ -4,7 +4,7 @@ import cv2
 import imutils
 import time
 
-vs = VideoStream(src=0).start()
+vs = VideoStream(src=1).start()
 
 time.sleep(2.0)
 
@@ -23,7 +23,7 @@ while True:
 	blurred = cv2.dilate(blurred,None, iterations=2)
 
 	(t, binary) = cv2.threshold(blurred, thresh, 255, cv2.THRESH_BINARY)
-	(_, cnts, _) = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+	cnts = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 	while len(cnts) != 1:
 		frame = vs.read()
 
@@ -37,15 +37,15 @@ while True:
 		blurred = cv2.dilate(blurred,None, iterations=2)
 
 		(t, binary) = cv2.threshold(blurred, thresh, 255, cv2.THRESH_BINARY)
-		(_, cnts, _) = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		cnts = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
 		thresh = thresh + 1
 
 		if thresh >= 255:
 			thresh = 155
-
+	 
 		(t, binary) = cv2.threshold(blurred, thresh, 255, cv2.THRESH_BINARY)
-		(_, cnts, _) = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+		cnts = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
 	if len(cnts)> 0:
 		for (i, c) in enumerate(cnts):
