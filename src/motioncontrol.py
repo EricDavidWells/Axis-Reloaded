@@ -307,7 +307,10 @@ class Finger:
             Vb = np.log(Tbs@Tsd)
             guess = guess + self.bodyJacobian(guess)@Vb
 
-        return guess
+    def limp(self):
+        for i in range(0, len(self.servos)):
+            self.servos[i].limp()
+        return
 
     def exiGen(self, w, p):
         exi = np.vstack((self.w1, np.cross(-self.w1.reshape(1,3), self.p1.reshape(1,3)).reshape(3,1)))
