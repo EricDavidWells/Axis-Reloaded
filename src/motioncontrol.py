@@ -31,11 +31,11 @@ class MotionController:
         baudrate = lssc.LSS_DefaultBaud
         lss.initBus(comport, baudrate)
 
-        fingers = [Finger([lss.LSS(11), lss.LSS(12), lss.LSS(13)], 2),
-                   Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)], 2),
-                   Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)], 2),
-                   Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)], 2),
-                   Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)], 2)]
+        fingers = [Finger([lss.LSS(11), lss.LSS(12), lss.LSS(13)], 0),
+                   Finger([lss.LSS(21), lss.LSS(22), lss.LSS(23)], 0),
+                   Finger([lss.LSS(31), lss.LSS(32), lss.LSS(33)], 0),
+                   Finger([lss.LSS(41), lss.LSS(42), lss.LSS(43)], 0),
+                   Finger([lss.LSS(51), lss.LSS(52), lss.LSS(53)], 0)]
 
         fangles = [0, 72 / 180 * pi, 72 * 2 / 180 * pi, 72 * 3 / 180 * pi, 72 * 4 / 180 * pi]
         radius = 69
