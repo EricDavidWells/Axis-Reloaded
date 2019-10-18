@@ -151,7 +151,7 @@ class MotionController:
                         while mode == 0:
                             time.sleep(0.1)
 
-                        if mode == 4:
+                        if mode == 3:
                             break
 
                 # Move all fingers in target direction
@@ -172,7 +172,7 @@ class MotionController:
                         while mode == 0:
                             time.sleep(0.1)
 
-                        if mode == 4:
+                        if mode == 3:
                             break
 
                 # Move all fingers back to starting spin position
@@ -198,7 +198,7 @@ class MotionController:
                         while mode == 0:
                             time.sleep(0.1)
 
-                        if mode == 4:
+                        if mode == 3:
                             break
 
             if mode == 3:
