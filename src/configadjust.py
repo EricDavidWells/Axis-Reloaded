@@ -3,7 +3,7 @@ import lss
 import lss_const as lssc
 import time
 
-comport = 'COM6'
+comport = 'COM7'
 servoID1 = 21
 servoID2 = 22
 servoID3 = 23
@@ -23,15 +23,15 @@ myLSS3.setColorLED(3, lssc.LSS_SetConfig)
 # myLSS3.setOriginOffset(-450, lssc.LSS_SetConfig)
 
 
-# myLSS1.reset()
-# myLSS2.reset()
-# myLSS3.reset()
+myLSS1.reset()
+myLSS2.reset()
+myLSS3.reset()
 #
-# time.sleep(5)
+time.sleep(5)
 
 # for i in range(0, 254):
 #     finger = lss.LSS(i)
-#     finger.setColorLED(1)
+#     finger.reset()
 
 while True:
     # start = time.time()

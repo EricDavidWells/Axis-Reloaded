@@ -135,12 +135,13 @@ class MotionController:
 
                     linpoints1 = 375
                     spos = spintraj[i][:, 0]
+
                     eposl = np.array([0, spinr-69, spinh])
-                    T = hand.Tas[i]
-                    temp = np.array(eposl).reshape(3, 1)
-                    posl = np.vstack((temp, 1))
-                    temp2 = T @ posl
-                    epos = temp2[0:3]
+                    T_ = hand.Tas[i]
+                    temp_ = np.array(eposl).reshape(3, 1)
+                    postemp_ = np.vstack((temp_, 1))
+                    temp2_ = T_ @ postemp_
+                    epos = temp2_[0:3]
                     epos = epos.reshape(3)
                     epostracker[i] = epos
                     if i == 4:
@@ -149,16 +150,6 @@ class MotionController:
                     else:
                         lintraj1.append(TrajectoryGen.linear_parabolicz(spos, epos, linpoints1, 30, plotflag=False))
                         ilintraj1.append(TrajectoryGen.inverse(lintraj1[i], interpfunglobal[i], plotFlag=False))
-
-                for i in range(4, -1, -1):
-                    for j in range(0, max(lintraj1[0].shape)):
-                        hand.move(ilintraj1[i][:, j], i)
-
-                        while mode == 0:
-                            time.sleep(0.1)
-
-                        if mode == 3:
-                            break
 
                 # Move all fingers in target direction
                 lintraj2 = []
@@ -171,15 +162,6 @@ class MotionController:
                     linpoints2 = 125
                     lintraj2.append(TrajectoryGen.linear(spos, epos, linpoints2, plotflag=False))
                     ilintraj2.append(TrajectoryGen.inverse(lintraj2[i], interpfunglobal[i], plotFlag=False))
-                for i in range(0, max(lintraj2[0].shape)):
-                    for j in range(0, 5):
-                        hand.move(ilintraj2[j][:, i], j)
-
-                        while mode == 0:
-                            time.sleep(0.1)
-
-                        if mode == 3:
-                            break
 
                 # Move all fingers back to starting spin position
                 lintraj3 = []
@@ -196,6 +178,26 @@ class MotionController:
                     else:
                         lintraj3.append(TrajectoryGen.linear_parabolicz(spos, epos, linpoints3, lindepth, plotflag=False))
                         ilintraj3.append(TrajectoryGen.inverse(lintraj3[i], interpfunglobal[i], plotFlag=False))
+
+                for i in range(4, -1, -1):
+                    for j in range(0, max(lintraj1[0].shape)):
+                        hand.move(ilintraj1[i][:, j], i)
+
+                        while mode == 0:
+                            time.sleep(0.1)
+
+                        if mode == 3:
+                            break
+
+                for i in range(0, max(lintraj2[0].shape)):
+                    for j in range(0, 5):
+                        hand.move(ilintraj2[j][:, i], j)
+
+                        while mode == 0:
+                            time.sleep(0.1)
+
+                        if mode == 3:
+                            break
 
                 for i in range(0, 5):
                     for j in range(0, max(lintraj3[0].shape)):
@@ -572,8 +574,9 @@ class TrajectoryGen:
 
     def interpfungenglobal(T, fun, offset):
         def fung(pos, guess):
-            pos[2] = pos[2] + offset
-            temp = np.array(pos).reshape(3,1)
+            temp3 = list(pos)
+            temp3[2] = pos[2] + offset
+            temp = np.array(temp3).reshape(3,1)
             posg = np.vstack((temp, 1))
             temp2 = T@posg
             posl = temp2[0:3]

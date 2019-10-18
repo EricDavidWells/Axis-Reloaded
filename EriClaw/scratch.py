@@ -5,9 +5,10 @@ import numpy as np
 from MotionController import *
 # from MotionController import MotionController
 
+mode = 0
 mc = MotionController()
 mc.run()
-mc.set_mode(0)
+mc.set_mode(2)
 mc.set_correction(np.array([0, 10, 0]))
 
 while True:
