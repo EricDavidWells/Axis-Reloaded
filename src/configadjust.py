@@ -4,9 +4,9 @@ import lss_const as lssc
 import time
 
 comport = 'COM7'
-servoID1 = 21
-servoID2 = 22
-servoID3 = 23
+servoID1 = 51
+servoID2 = 52
+servoID3 = 53
 
 baudrate = lssc.LSS_DefaultBaud
 lss.initBus(comport, baudrate)
@@ -23,22 +23,25 @@ myLSS3.setColorLED(3, lssc.LSS_SetConfig)
 # myLSS3.setOriginOffset(-450, lssc.LSS_SetConfig)
 
 
-myLSS1.reset()
-myLSS2.reset()
-myLSS3.reset()
-#
-time.sleep(5)
+# myLSS1.reset()
+# myLSS2.reset()
+# myLSS3.reset()
+# time.sleep(5)
 
 # for i in range(0, 254):
 #     finger = lss.LSS(i)
 #     finger.reset()
 
 while True:
+    pos = int(input("move location: "))
+    myLSS1.move(0)
+    myLSS2.move(0)
+    myLSS3.move(0)
     # start = time.time()
-    pos1 = myLSS1.getPosition()
-    pos2 = myLSS2.getPosition()
-    pos3 = myLSS3.getPosition()
+    # pos1 = myLSS1.getPosition()
+    # pos2 = myLSS2.getPosition()
+    # pos3 = myLSS3.getPosition()
 
     # end = time.time()
-    print(pos1, pos2, pos3)
+    # print(pos1, pos2, pos3)
     time.sleep(0.01)

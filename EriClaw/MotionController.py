@@ -56,6 +56,7 @@ class MotionController:
         hand = Hand(fingers, fangles, radius)
         print("Reseting Hand")
         hand.reset()
+        hand.changehandcolor(0)
         print("Loading point cloud")
         x, y, z, data0, data1, data2 = pickle.load(open("IK_pointcloud.1.p", "rb"))
 
@@ -73,7 +74,7 @@ class MotionController:
         # Generate global interpolation functions for each finger
         interpfun = TrajectoryGen.interpfungen(x, y, z, data0, data1, data2)
         interpfunglobal = []
-        offset = [0, 0, 0, 0, 0]
+        offset = [-1.5, 0, -2, 0, 0]
         print("Generating interpolation functions")
         for i in range(0, len(hand.fingers)):
             temp = TrajectoryGen.interpfungenglobal(np.linalg.inv(hand.Tas[i]), interpfun, offset[i])
@@ -90,6 +91,7 @@ class MotionController:
         spinitraj2 = []
         print("Creating Spin Trajectories")
         for i in range(0, len(hand.fingers)):
+            hand.changehandcolor(i)
             print("Spin trajectory for finger " + str(i+1))
             spintraj.append(TrajectoryGen.spin(spinr, spinh, spindepth, points, 4, i, trajoffset, plotflag=False))
             # ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=i)
@@ -98,6 +100,7 @@ class MotionController:
 
         # _ = input("ready to start: ")
         print("Moving Hand to Neutral position")
+        hand.changehandcolor(1)
         for j in range(0, 5):
             hand.move(spinitraj2[j][:, 0], j)
             # hand.move(np.array([0, 0, 0]), j)
@@ -110,20 +113,29 @@ class MotionController:
             # 2 = linear correction
             # 3 = shut off motors
 
+            if mode == 0:
+                hand.changehandcolor(4)
+
             if mode == 1:
+                hand.changehandcolor(6)
                 state = 1
                 for i in range(0, max(spinitraj2[0].shape)):
                     for j in range(0, 5):
 
-                        while mode == 0:
-                            time.sleep(0.1)
+                        if mode == 0:
+                            hand.changehandcolor(4)
+                            while mode == 0:
+                                time.sleep(0.1)
+                                hand.changehandcolor(4)
+                            hand.changehandcolor(6)
 
-                        if mode == 4:
+                        if mode == 3:
                             break
 
                         hand.move(spinitraj2[j][:, i], j)
 
             if mode == 2:
+                hand.changehandcolor(5)
                 # Center
                 # Move to center finger positions one at a time
 
@@ -183,8 +195,12 @@ class MotionController:
                     for j in range(0, max(lintraj1[0].shape)):
                         hand.move(ilintraj1[i][:, j], i)
 
-                        while mode == 0:
-                            time.sleep(0.1)
+                        if mode == 0:
+                            hand.changehandcolor(4)
+                            while mode == 0:
+                                time.sleep(0.1)
+                                hand.changehandcolor(4)
+                            hand.changehandcolor(5)
 
                         if mode == 3:
                             break
@@ -193,8 +209,12 @@ class MotionController:
                     for j in range(0, 5):
                         hand.move(ilintraj2[j][:, i], j)
 
-                        while mode == 0:
-                            time.sleep(0.1)
+                        if mode == 0:
+                            hand.changehandcolor(4)
+                            while mode == 0:
+                                time.sleep(0.1)
+                                hand.changehandcolor(4)
+                            hand.changehandcolor(5)
 
                         if mode == 3:
                             break
@@ -203,8 +223,12 @@ class MotionController:
                     for j in range(0, max(lintraj3[0].shape)):
                         hand.move(ilintraj3[i][:, j], i)
 
-                        while mode == 0:
-                            time.sleep(0.1)
+                        if mode == 0:
+                            hand.changehandcolor(4)
+                            while mode == 0:
+                                time.sleep(0.1)
+                                hand.changehandcolor(4)
+                            hand.changehandcolor(5)
 
                         if mode == 3:
                             break
@@ -275,6 +299,15 @@ class Hand:
             fi.move(theta)
         self.J = [fi.J for fi in self.fingers]
         self.pos = [self.fkine(fi.J, i) for i, fi in enumerate(self.fingers)]
+
+    def changehandcolor(self, color):
+        for i in range(0, len(self.fingers)):
+            self.changefingercolor(i, color)
+
+    def changefingercolor(self, fingernum, color):
+        finger = self.fingers[fingernum]
+        for servo in finger.servos:
+            servo.setColorLED(color)
 
 
 class Finger:
