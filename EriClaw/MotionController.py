@@ -42,6 +42,7 @@ class MotionController:
         else: 
             comport = "/dev/ttyUSB0"
         baudrate = lssc.LSS_DefaultBaud
+        print("Connecting to LSS")
         lss.initBus(comport, baudrate)
 
         fingers = [Finger([lss.LSS(11), lss.LSS(12), lss.LSS(13)], 0),
@@ -53,8 +54,9 @@ class MotionController:
         fangles = [0, 72 / 180 * pi, 72 * 2 / 180 * pi, 72 * 3 / 180 * pi, 72 * 4 / 180 * pi]
         radius = 69
         hand = Hand(fingers, fangles, radius)
+        print("Reseting Hand")
         hand.reset()
-
+        print("Loading point cloud")
         x, y, z, data0, data1, data2 = pickle.load(open("IK_pointcloud.1.p", "rb"))
 
         # Local Point Cloud Interpolation Generation
@@ -72,12 +74,13 @@ class MotionController:
         interpfun = TrajectoryGen.interpfungen(x, y, z, data0, data1, data2)
         interpfunglobal = []
         offset = [0, 0, 0, 0, 0]
+        print("Generating interpolation functions")
         for i in range(0, len(hand.fingers)):
             temp = TrajectoryGen.interpfungenglobal(np.linalg.inv(hand.Tas[i]), interpfun, offset[i])
             interpfunglobal.append(temp)
 
         # Create Spin Trajectories
-        points = 2000
+        points = 1000
         trajoffset = 2 * pi / 180
         spinr = 125
         spinh = 175
@@ -85,13 +88,16 @@ class MotionController:
         spintraj = []
         spinitraj = []
         spinitraj2 = []
+        print("Creating Spin Trajectories")
         for i in range(0, len(hand.fingers)):
+            print("Spin trajectory for finger " + str(i+1))
             spintraj.append(TrajectoryGen.spin(spinr, spinh, spindepth, points, 4, i, trajoffset, plotflag=False))
             # ikinehelper = lambda pd, guess: hand.ikine(pd, guess, fingernum=i)
             # spinitraj.append(TrajectoryGen.inverse(traj[i], ikinehelper, plotFlag=1))
             spinitraj2.append(TrajectoryGen.inverse(spintraj[i], interpfunglobal[i], plotFlag=False))
 
         # _ = input("ready to start: ")
+        print("Moving Hand to Neutral position")
         for j in range(0, 5):
             hand.move(spinitraj2[j][:, 0], j)
             # hand.move(np.array([0, 0, 0]), j)
@@ -127,7 +133,7 @@ class MotionController:
                 epostracker = [0, 0, 0, 0, 0]
                 for i in range(0, 5):
 
-                    linpoints1 = 750
+                    linpoints1 = 375
                     spos = spintraj[i][:, 0]
                     eposl = np.array([0, spinr-69, spinh])
                     T = hand.Tas[i]
@@ -162,7 +168,7 @@ class MotionController:
                     spos = epostracker[i]
                     epos = spos - correction
                     epostracker[i] = epos
-                    linpoints2 = 250
+                    linpoints2 = 125
                     lintraj2.append(TrajectoryGen.linear(spos, epos, linpoints2, plotflag=False))
                     ilintraj2.append(TrajectoryGen.inverse(lintraj2[i], interpfunglobal[i], plotFlag=False))
                 for i in range(0, max(lintraj2[0].shape)):
@@ -182,7 +188,7 @@ class MotionController:
                     spos = epostracker[i]
                     epos = spintraj[i][:, 0]
                     epos = epos.reshape(3)
-                    linpoints3 = 750
+                    linpoints3 = 375
                     lindepth = 30
                     if i == 4:
                         lintraj3.append(TrajectoryGen.linear(spos, epos, linpoints3, plotflag=False))

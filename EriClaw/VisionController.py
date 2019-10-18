@@ -53,7 +53,7 @@ class VisionController:
                 break
             # grab the current frame
             frame = vs.read()
-
+            time.sleep(0.5)
             # if we are viewing a video and we did not grab a frame,
             # then we have reached the end of the video
             if frame is None:
@@ -182,8 +182,8 @@ class VisionController:
             #     cv2.line(frame, pts[i - 1], pts[i], (0, 0, 255), thickness)
 
             # # show the frame to our screen
-            cv2.imshow("Frame", binary)
-            key = cv2.waitKey(1) & 0xFF
+            #cv2.imshow("Frame", binary)
+            #key = cv2.waitKey(1) & 0xFF
 
         vs.stop()
         cv2.destroyAllWindows()
