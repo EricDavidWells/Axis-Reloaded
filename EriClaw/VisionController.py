@@ -16,21 +16,27 @@ class VisionController:
     def run(self):
         global shutdown
         global position
+        global state
+        state = ""
         shutdown = False
         position = ''
+        print("Initializing Vision Controller")
         t = threading.Thread(target=self.run_thread)
         t.start()
 
     def getPosition(self):
         # return self.visionQueue.get()
         return position
-
+    def getState(self):
+        # return self.visionQueue.get()
+        return state
     def shutDown(self):
         global shutdown
         shutdown = True
 
     def run_thread(self):
         global position
+        global state
         if platform.system() == 'Windows':
             vs = VideoStream(src=1).start()
         else:
@@ -40,7 +46,7 @@ class VisionController:
         greenLower = (69,53,26)
         greenUpper = (134,196,176)
         thresh = 254
-
+        first = 1
         
         while True:
             if shutdown:
@@ -105,7 +111,9 @@ class VisionController:
                 (t, binary) = cv2.threshold(blurred, thresh, 255, cv2.THRESH_BINARY)
                 cnts = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
                 cnts = imutils.grab_contours(cnts)
-           
+            if first == 1:
+                print("Vision Controller Ready. Press enter to continue.")
+                first = 0
             (t, binary) = cv2.threshold(blurred, thresh - 10, 255, cv2.THRESH_BINARY)
             cnts = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             cnts = imutils.grab_contours(cnts)
@@ -120,18 +128,21 @@ class VisionController:
                 
                 # Check if center is outside of 2 cm from middle
                 # print(str((abs(x - 225)**2 + abs(y - 300)**2) **.5))
-                if (abs(x - 300)**2 + abs(y - 225)**2) **.5 >= 56.8:
+                xl = 12.5 / 48 * (x - 300)
+                yl = 12.5 / 48 * (y - 225)
+                theta = 36 * pi / 180
+                xg = -xl * cos(theta) - yl * sin(theta)
+                yg = -(-xl * sin(theta) + yl * cos(theta))
+                if (abs(x - 300)**2 + abs(y - 225)**2) ** .5 >= 56.8:
                     # print("OFF CENTRE!")
-                    xl = 12.5/48 * (x-300)
-                    yl = 12.5/48 * (y-225)
-                    theta = 36 * pi / 180
-                    xg = -xl * cos(theta) - yl*sin(theta)
-                    yg = -(-xl * sin(theta) + yl*cos(theta))
+
                     # print(str(xg)+" " + str(yg))
-                    position = (xg , yg)
+                    position = (xg, yg)
+                    state = "Off"
                 else:
                     # print(str(x)+' '+str(y))
-                    position = "Centered"
+                    state = "Centered"
+                    position = (xg, yg)
                 # Should have a check for minimum radius being appropriate
                 # 
             #     M = cv2.moments(c)
