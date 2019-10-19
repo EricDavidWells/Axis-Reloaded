@@ -31,10 +31,10 @@ def main():
     print("Input help or h for command list")
     inputThread = threading.Thread(target=read_kbd_input, args=(inputQueue,), daemon=True)
     inputThread.start()
-    see = True
+    camera = True
     pause = False
     while (True):
-        if see:
+        if camera:
             correction = vc.getPosition()
             state = vc.getState()
             if state != "Centered":
@@ -59,14 +59,13 @@ def main():
                 mc.set_mode(3)
                 print("Exiting serial terminal.")
                 break
-            elif pause and not input_str == 0:
+            elif pause and not input_str == '0':
                 print("System is paused, input 0 to resume")
             else:
                 if not input_str.isalpha():
                     mc.set_mode(int(input_str))
                     if int(input_str) == 0:
-                        pause = True
-
+                        pause = not pause
                 elif input_str == 'camera':
                     camera = not camera
                     camState = "Camera turned on." if camera else "Camera turned off."

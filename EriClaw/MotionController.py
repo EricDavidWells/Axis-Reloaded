@@ -81,7 +81,7 @@ class MotionController:
             interpfunglobal.append(temp)
 
         # Create Spin Trajectories
-        points = 1000
+        points = 800
         trajoffset = 2 * pi / 180
         spinr = 125
         spinh = 175
