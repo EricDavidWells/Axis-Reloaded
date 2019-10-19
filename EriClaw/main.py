@@ -31,7 +31,7 @@ def main():
     print("Input help or h for command list")
     inputThread = threading.Thread(target=read_kbd_input, args=(inputQueue,), daemon=True)
     inputThread.start()
-    see  = True
+    see = True
     pause = False
     while (True):
         if see:
@@ -65,11 +65,8 @@ def main():
                 if not input_str.isalpha():
                     mc.set_mode(int(input_str))
                     if int(input_str) == 0:
-                        res = ''
-                        while not res == '0':
-                            res = input()
-                            print(res)
-                # print(vc.getPosition())
+                        pause = True
+
                 elif input_str == 'camera':
                     camera = not camera
                     camState = "Camera turned on." if camera else "Camera turned off."
