@@ -55,7 +55,9 @@ def main():
                 vc.shutDown()
                 mc.set_mode(0)
                 print("Press enter when plate is removed to complete shutdown.")
-                input()
+                while inputQueue.qsize() < 0:
+                   time.sleep(.5)
+                temp = inputQueue.get() 
                 mc.set_mode(3)
                 print("Exiting serial terminal.")
                 break
