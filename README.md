@@ -16,8 +16,13 @@ https://www.robotshop.com/info/wiki/lynxmotion/view/lynxmotion-smart-servo/lss-c
 
 # Dependencies
 Python 3.6
+
 https://github.com/Lynxmotion/LSS_Library_Python
+
 Scipy 1.3.2
+
 Matplotlib 3.1.1
+
 OpenCV 4.1.1.26
+
 Imultils 0.5.3
